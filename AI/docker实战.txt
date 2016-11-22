@@ -1,0 +1,272 @@
+公司内网Docker入门实战
+
+1 环境准备
+硬件环境	IBM X3650  2*6C  24G	联想笔记本 T420i  i3-2310M  4G
+操作系统	CentOS7.2.1511	CentOS7.2.1511（安装在VirtualBox，分配1G内存）
+IP	10.46.60.183	10.46.20.8
+docker版本	1.9.1-25.e17	1.9.1-25.e17
+
+2 配置上网代理
+在wxcop上龚明升同学写过各种不同的配置上网代理的方法，大家可以去以下网址查看
+http://wxcop.zte.com.cn/topic/view/7067
+
+由于我安装的是CentOS的Minimal版本，不带图形界面，所以用的shell方式，这里给出我的配置：
+
+# vi ~/.bashrc
+
+在文件末尾添加以下内容
+export http_proxy=http://proxynj.zte.com.cn:80/
+export https_proxy=http://proxynj.zte.com.cn:80/
+export no_proxy=".zte.com.cn,.zte.intra,10.0.0.0/8,127.0.0.1,172.17.0.0/16,192.168.0.0/16, zxess-registry"
+加载环境变量
+# source ~/.bashrc
+
+说明：注意上面的no_proxy中必须配置.zte.com.cn而不是*.zte.com.cn，否则在使用公司的镜像站点时会报“内部网站不能通过代理访问的错误”
+
+代理设置完毕后，需要用人事在线的账号密码登录代理服务器，这里需要感谢张云辉10092495同学提供的登录脚本，脚本可以从以下网址获取
+http://gitlab.zte.com.cn/10092495/login_proxy
+
+运行login.py并输入人事在线用户名和密码进行代理服务器登录认证
+#chmod +x login.py
+# ./login.py
+User account: 10012345
+Password:
+Login Success. Enjoy your surf! (^.^)
+
+3 配置yum源
+yum源的配置文件位于/etc/yum.repos.d下，先将原先的repo文件备份以下
+# cd /etc/yum.repos.d/
+# mkdir bak
+# mv *.repo bak/
+创建公司的镜像源mirros.zte.com.cn的配置文件
+# vi CentOS7-base-zte.repo
+
+加入如下内容
+# CentOS-Base.repo
+#
+# The mirror system uses the connecting IP address of the client and the
+# update status of each mirror to pick mirrors that are updated to and
+# geographically close to the client.  You should use this for CentOS updates
+# unless you are manually picking other mirrors.
+#
+# If the mirrorlist= does not work for you, as a fall back you can try the
+# remarked out baseurl= line instead.
+#
+#
+[base]
+name=CentOS-$releasever - Base - zte.com.cn
+#mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo=os
+baseurl=http://mirrors.zte.com.cn/centos/$releasever/os/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.zte.com.cn/centos/RPM-GPG-KEY-CentOS-7
+
+#released updates
+[updates]
+name=CentOS-$releasever - Updates - zte.com.cn
+#mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo=updates
+baseurl=http://mirrors.zte.com.cn/centos/$releasever/updates/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.zte.com.cn/centos/RPM-GPG-KEY-CentOS-7
+
+#additional packages that may be useful
+[extras]
+name=CentOS-$releasever - Extras - zte.com.cn
+#mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=$basearch&repo=extras
+baseurl=http://mirrors.zte.com.cn/centos/$releasever/extras/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.zte.com.cn/centos/RPM-GPG-KEY-CentOS-7
+
+#additional packages that extend functionality of existing packages
+[centosplus]
+name=CentOS-$releasever - Plus - zte.com.cn
+baseurl=http://mirrors.zte.com.cn/centos/$releasever/centosplus/$basearch/
+gpgcheck=1
+enabled=0
+gpgkey=http://mirrors.zte.com.cn/centos/RPM-GPG-KEY-CentOS-7
+
+让源生效
+# yum clean all
+# yum makecache
+
+4 安装docker
+# yum install docker
+# docker version
+Client:
+ Version:         1.9.1
+ API version:     1.21
+ Package version: docker-1.9.1-25.el7.centos.x86_64
+ Go version:      go1.4.2
+ Git commit:      78ee77d/1.9.1
+ Built:
+ OS/Arch:         linux/amd64
+
+Server:
+ Version:         1.9.1
+ API version:     1.21
+ Package version: docker-1.9.1-25.el7.centos.x86_64
+ Go version:      go1.4.2
+ Git commit:      78ee77d/1.9.1
+ Built:
+ OS/Arch:         linux/amd64
+
+启动docker
+# service docker start
+
+5 docker基本操作
+查询官方镜像
+# docker search centos
+
+拉取镜像
+# docker pull centos:7.2.1511
+
+启动镜像
+# docker run -it centos:7.2.1511 /bin/bash
+
+查看本地运行容器
+# docker ps -a
+
+查看本地镜像
+# docker images
+
+删除镜像
+# docker rmi <IMAGEID>
+
+删除容器
+# docker rm <CONTAINERID>
+
+从本地导出镜像
+# docker save -o zxess-registry.tar zxess-registry:5000/zxess/registry:2.4
+
+从本地文件导入镜像
+# docker load -i zxess-registry.tar
+
+
+
+6 搭建docker私有仓库
+搭建这里建立一个最简单的，不带安全认证的私有仓库
+# docker pull registry:2.4
+# docker run -d --privileged \
+-p 5000:5000 \
+         -v /zxess/registry:/var/lib/registry \
+         --restart=always \
+         --name zxess-registry \
+         zxess-registry:5000/zxess/registry:2.4
+这样就建立了一个私有仓库，-v /zxess/registry:/var/lib/registry表示将仓库的位置映射为本地目录/zxess/registry
+
+为了能使的仓库被远程访问，换需要做一下配置，修改/etc/sysconfig/docker文件，在文件中添加如下行
+INSECURE_REGISTRY='--insecure-registry=zxess-registry:5000'
+DOCKER_OPTS='--insecure-registry=zxess-registry:5000'
+修改完了需要重启docker生效
+# systemctl daemon-reload
+# systemctl restart docker
+
+在/etc/hosts中配置域名和IP的关系
+10.46.60.183    ESG-A23209049 ESG-A23209049.zte.intra zxess-registry zxess-registry.zte.intra
+
+私有镜像服务器的查询和删除需要通过Restful接口进行操作，这里给出一些常用的接口
+
+查询所有的镜像
+http://10.46.60.183:5000/v2/_catalog
+
+查询所有的镜像
+http://10.46.60.183:5000/v2/_catalog
+
+查询指定镜像的tags
+http://10.46.60.183:5000/v2/<imagename>/tags/list
+比如http://10.46.60.183:5000/v2/zxess/jdk/tags/list
+
+删除仓库镜像
+# curl -X DELETE -H "Accept: application/vnd.docker.distribution.manifest.v1+prettyjws" esg-registry.zte.intra:5000/v2/<imagename>/manifests/<degist-id>
+比如curl -X DELETE -H "Accept: application/vnd.docker.distribution.manifest.v1+prettyjws" esg-registry.zte.intra:5000/v2/zxess/ jdk/manifests/sha256:51c27c49a1a5c075273b9bdd9dfccdd0c2c172efacc87e793e0e3bba7d45887
+
+7 镜像的上传下载
+为了测试私有仓库的远程能力是否可用，我在10.46.20.8上对仓库进行访问，和上一节一样需要修改/etc/sysconfig/docker文件和/etc/hosts文件，增加对私有仓库访问的配置
+
+在/etc/sysconfig/docker文件中添加如下行
+INSECURE_REGISTRY='--insecure-registry=zxess-registry:5000'
+DOCKER_OPTS='--insecure-registry=zxess-registry:5000'
+修改完了需要重启docker生效
+# systemctl daemon-reload
+# systemctl restart docker
+
+在/etc/hosts中配置域名和IP的关系
+10.46.60.183    ESG-A23209049 ESG-A23209049.zte.intra zxess-registry zxess-registry.zte.intra
+
+下面我们试一下docker镜像的上传，以centos镜像为例
+# docker images
+REPOSITORY                               TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
+centos                                   7.2.1511            8d74077f3b19        4 months ago        194.6 MB
+# docker tag 8d74077f3b19 zxess-registry:5000/zxess/centos
+# docker images
+zxess-registry:5000/zxess/centos     7.2.1511            8d74077f3b19        4 months ago        194.6 MB
+centos                               7.2.1511            8d74077f3b19        4 months ago        194.6 MB
+# docker push zxess-registry:5000/zxess/centos:7.2.1511
+The push refers to a repository [zxess-registry:5000/zxess/centos] (len: 1)
+26e4c8d75abc: Pushed
+ec1a44d88665: Pushed
+923c0a0366f9: Pushed
+68249177916a: Pushed
+5b275c1ca471: Pushed
+a4a0ae719c7d: Pushed
+396ea8a5968b: Pushed
+fd95e76c4fb2: Pushed
+8u91: digest: sha256:b4725935887bbe80b19e1d9ee044dda706a7a0083699081ef25e21ac0b0df6e7 size: 194679
+
+下载镜像
+# docker pull zxess-registry:5000/zxess/centos:7.2.1511
+
+
+8 制作镜像
+制作镜像有两种方式，一种是直接在基础镜像上进行修改，修改完以后commit为一个新的镜像，另一种是通过Dockerfile的方式制作镜像。
+
+前一种方式比较简单，这里不介绍了，着重介绍后一种，下面以制作Jenkins镜像作为例子
+#基础镜像
+FROM zxess-registry:5000/zxess/jdk:8u91
+
+#作者信息
+MAINTAINER from ZTE by Wu Chunming
+
+#通过本地安装包安装jenkins
+COPY jenkins.war /zxess/jenkins/jenkins.war
+WORKDIR /zxess/jenkins
+#RUN echo "nohup java -jar jenkins.war &" > startup-jenkins.sh
+#RUN chmod +x startup-jenkins.sh
+
+#通过本地安装包安装gradle
+COPY gradle-2.11.tar.gz /zxess/jenkins/gradle.tar.gz
+RUN tar -xvf gradle.tar.gz
+RUN rm -rf gradle.tar.gz
+ENV GRADLE_HOME /zxess/jenkins/gradle-2.11
+ENV PATH $GRADLE_HOME/bin:$PATH
+
+#通过本地安装包安装node
+COPY node-v5.9.0-linux-x64.tar.gz /zxess/jenkins/node.tar.gz
+RUN tar -xvf node.tar.gz
+RUN rm -rf node.tar.gz
+ENV NODE_HOME /zxess/jenkins/node-v5.9.0-linux-x64
+ENV PATH $NODE_HOME/bin:$PATH
+
+#端口设置
+EXPOSE 8080
+
+#设置jenkins工作目录挂载点
+VOLUME ["/zxess/jenkins/workspace"]
+
+#容器启动时启动jenkins
+CMD ["java", "-jar", "jenkins.war"]
+
+通过docker build命令制作镜像
+docker build -t zxess-registry:5000/zxess/jenkins:1.651.1 .
+
+启动docker
+docker run -d --privileged \
+         -p 8080:8080 \
+         -v /zxess/jenkins/esg:/zxess/jenkins/workspace \
+         -v /zxess/jenkins/config:/root/.jenkins \
+         --restart=always \
+         --name zxess-jenkins \
+         zxess-registry:5000/zxess/jenkins:1.651.1
+上述/zxess/jenkins/workspace是jenkins的任务的工作目录，映射为宿主机的本地目录/zxess/jenkins/esg
+而/root/.jenkins是jenkins的运行时数据目录，映射为宿主机的本地目录/zxess/jenkins/config
+
+

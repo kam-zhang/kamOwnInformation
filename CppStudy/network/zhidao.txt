@@ -1,0 +1,63 @@
+1）设置linux代理
+
+
+
+        将下面脚本解压拷贝到/etc/profile.d，然后重新登录或执行"source /etc/profile.d/net_proxy.sh"
+
+        net_proxy.tar
+
+        
+
+        脚本里面的代理设置的南京的，非南京的自己根据自己情况自行修改一下        
+
+
+
+2）设置dns服务器
+
+       root@xiii: ~ # echo nameserver 10.30.1.9 > /etc/resolv.conf 
+
+
+
+3）在公司内网访问外网时，可以使用如下脚本，解压后执行，也可以使用firefox登录一下
+
+        
+
+        login_proxy-master-6370ad76bdd3de0a5d8120af621bcd4684fa8fd8.zip
+
+
+
+
+
+        root@xiii: ~ # python login.py 
+
+        User account: 10067372
+
+        Password: 
+
+        Login Success. Enjoy your surf! (^.^)
+
+
+
+        脚本参见
+
+        http://dev.zte.com.cn/topic/view/6334
+
+
+
+4）直接使用外部镜像源安装，参见如下链接，设置好
+
+        http://mirrors.163.com/.help/centos.html
+
+
+
+        或者使用公司的镜像源，不需要登录大网哦，配置文件如下，解压到/etc/yum.repos.d目录，解压前先清空此目录已有文件
+
+       
+
+        ZTE_REPO.tar.gz
+
+
+
+
+
+5）使用yum install docker，安装docker

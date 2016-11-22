@@ -1,0 +1,189 @@
+在Linux命令行下接入公司内网
+LTE开发部: 李忠雷
+【摘要】
+Linux被公司广泛用做开发机和编译机,但是上面没有公司发布的的 VPN软件, 接入公司内网不方便。本文介绍一种命令行下接入公司内网的方法, 可以解决Linux下接入公司网卡问题.
+
+【关键词】Linux, VPN。
+一、	问题的提出
+Linux已经被公司内广泛用做开发机和编译机,但是公司未发而对应的VPN软件。虽然可以在图形界面上使用NetworkManager，但是此软件的稳定性不太高，有时怎样都无法接入。或有时我们只希望使用命令行，不期望安装图形界面（大部分只是安装ssh服务和samba服务），或有的电脑期望重启后能自动接到公司内网，不需要人工登陆。这时我们就期望有个Linux命令行下的拨号程序。
+为此从NetworkManager入手，经研究发现，公司使用的是802.1x认证(PEAP认证+GTC认证)，而NetworkManager在认证时是通过调用wpa_supplicant命令行实现。为此可以研究wpa_supplicant的802.1x的认证方式来实现命令行拨号。
+
+
+二、	解决思路
+?	Linux网络管理方式介绍
+Linux上有两套网络管理方式：
+1.	传统的 /etc/network/interface 配置文件。
+系统上电时会运行 /etc/init.d/network 脚本，此脚本读入/etc/network/interface并根据里面的配置设置网络。
+
+2.	图形界面NetworkManager方式。
+NetworkManager由一个管理系统网络连接、并且将其状态通过D-BUS（是一个提供简单的应用程序互相通讯的途径的自由软件项目。  
+NetworkManager的优点：简化网络连接的工作，让桌面本身和其他应用程序能感知网络。
+但是NetworkManager与图形界面相关，而linux的不同软件版本由不同的团队开发，之间的兼容性没有保证。如果我们要用最新软件，可能NetworkManager会因为兼容性而导致网络连接失败。或者有时也不想安装图形界面。
+
+所以，我们考虑在 /etc/network/interface配置网络，然后通过脚本的方式连接公司内网。与通过NetworkManager相比，有如下优点：
+1.	没有图形界面也可以正常接入公司内网。
+2.	升级图形界面也不会影响网络连接。
+
+?	/etc/network/interface文件介绍
+此文件配置机器上所有网口的网络信息，例子如下：
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+#source /etc/network/interfaces.d/*
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface
+allow-hotplug eth0
+iface eth0 inet dhcp
+
+allow-hotplug eth1
+iface eth1 inet static
+address 108.8.105.150
+netmask 255.255.255.0
+	
+格式并不复杂，#号开始表示注释。
+auto lo: 				表示lo 网口在机器上电时自动启动。
+iface lo inet loopback: 	表示把 lo 网口配置成环回接口。iface 是interface的缩写。
+
+allow-hotplug eth0:  	表示eth0允许网线动态插入。
+iface eth0 inet dhcp:  	表示配置 eth0的 IP地址(inet)为动态分配(dhcp)的
+
+下面则设置 eth1 的IP地址为静态分配(static)，并使用 address 设置IP地址，使用netmask设置子网掩码。
+allow-hotplug eth1
+iface eth1 inet static
+address 108.8.105.150
+netmask 255.255.255.0
+
+
+?	wpa_spplicant介绍
+wpa_supplicant本是开源项目源码，被谷歌修改后加入android移动平台，它主要是用来支持WEP，WPA/WPA2和WAPI无线协议和加密认证。
+
+公司内网VPN使用的加密方式是PEAP+GTC, 它们都能被wpa_supplicant支持。
+
+在有线网卡上使用wpa_supplicant命令的例子如下：
+wpa_supplicant  -d -B -i eth0 -c /etc/wpa_supplicant.conf -D wired
+
+各参数意义为：
+-d:	显示调试信息
+-B:	在后台以守护进程方式执行。这样命令执行完后不会占用一个终端，或是终端关闭不会导致网络连接关闭。
+-i eth0: 在eth0网卡上运行加密认证。
+-c /etc/wpa_supplicant.conf: 使用指定配置文件。
+-D wired:	使用的驱动是有线设备驱动(wired)
+
+在认证完后还需要把网卡设置为up, 并启动dhcp, 因为需要在网卡上重获取IP地址。
+ifup    eth0
+dhclient eth0
+
+?	wpa_supplicant.conf介绍
+此文件配置公司VPN认证方式，格式如下：
+ctrl_interface=/var/run/wpa_supplicant
+ctrl_interface_group=root
+ap_scan=0
+network={
+   key_mgmt=IEEE8021X
+   eap=PEAP
+   phase1="peaplabel=0"
+   phase2="auth=GTC"
+   identity="10045738"
+   password="mypassword"
+}
+
+文件内容：
+ctrl_interface=/var/run/wpa_supplicant:	控制网卡的路径。
+ctrl_interface_group=root:				只有root能够操作。
+ap_scan=0:							不扫描无线接入点。
+Network:								配置网络认证方式。
+key_mgmt=IEEE8021X:					使用IEEE8021X认证方式。
+eap=PEAP:							第一步使用PEAP认证。
+phase1="peaplabel=0":					同上。
+phase2="auth=GTC":					第二步使用GTC认证。
+identity="10045738":					填自己的域用户名(工号)。
+password="mypassword"				填自己的域密码。
+
+在上面自己修改下域用户名密码。然后就可以使用。
+
+
+三、	实践情况
+我们可以把上面的操作写成一个脚本ztevpn.sh，然后让它自动运行或是手动运行。脚本内容如下：
+cat /usr/sbin/ztevpn.sh       
+#!/bin/bash
+
+export PATH=/sbin/:/bin/:/usr/sbin:/usr/bin:$PATH
+
+echo "ZTE VPN LINUX CONNECT SCRIPT:"
+read -p "Please input you ZTE VPN account: " USERNAME
+
+if [ -z "$USERNAME" ] ; then
+echo "ERROR: no VPN Account, exit. VPN account is 7 digit ID."
+exit 1
+fi
+
+read -s -p "Please input $USERNAME 's Password: " PASSWORD
+
+if [ -z "$PASSWORD" ] ; then
+echo "ERROR: no VPN Password, exit. VPN password is ZTE domain login password."
+exit 1
+fi
+
+killall wpa_supplicant 2>/dev/null
+ifdown  eth0 2>/dev/null
+
+(
+cat <<EOF
+
+ctrl_interface=/var/run/wpa_supplicant
+ctrl_interface_group=root
+ap_scan=0
+network={
+   key_mgmt=IEEE8021X
+   eap=PEAP
+   phase1="peaplabel=0"
+   phase2="auth=GTC"
+   identity="$USERNAME"
+   password="$PASSWORD"
+}
+EOF
+) > /tmp/wpa_supplicant.conf
+
+wpa_supplicant  -d -B -i eth0 -c /tmp/wpa_supplicant.conf -D wired
+
+rm -f /tmp/wpa_supplicant.conf
+
+echo "up ETH0"
+ifup    eth0
+sleep 3
+dhclient eth0
+脚本包括：
+1.	读入VPN用户名密码。
+2.	杀死已在运行的wpa_supplicant。
+3.	重设置需要运行wpa_supplicant的网卡。
+4.	生成临时的wpa配置文件（这是为了避免在公共linux机器上泄漏自己的域用户）
+5.	使用wpa_supplicant执行认证。
+6.	启动网卡。
+7.	让网卡获取IP地址。
+
+上面脚本是给公共LINUX机器使用的。
+如果是自己使用，可以把：
+read -p "Please input you ZTE VPN account: " USERNAME
+read -s -p "Please input $USERNAME 's Password: " PASSWORD
+
+直接改成自己的域用户名和密码，例如:
+	USERNAME=10045738
+PASSWORD=mypassword
+然后把这个脚本添加到系统自动运行脚本中。就能实现机器每次自动连接网络。
+
+	
+四、	效果评价
+应用此脚本可以方便的在Linux命令行下连接网络，兼容性好(支持所有Linux平台), 操作简单，是Linux下接入网络的一个好选择。
+五、	推广建议
+应用此方法，可以方便的在Linux下接入办公网络，适合在所有LinuxPC上使用。
+
+六、	参考资料
+Man page.
+
+?	完 ——
+
+

@@ -1,0 +1,13 @@
+####################################################################################
+This project use cmake to generate makefile
+
+Before running build.sh script,you should make sure it has executable priority.
+
+If not,please enter chmod u+x ./build.sh to change property.
+
+Then run ./build.sh, you can see makefile in build path and result of test cases.
+
+Note: suffix of test case files must be .xpp.
+
+Any questions, please e-mail:deng.chuanbin@zte.com.cn
+

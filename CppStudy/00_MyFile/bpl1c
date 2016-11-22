@@ -1,0 +1,27 @@
+#!/bin/bash
+set +x
+CurrentPath=$(pwd)
+starttime=$(date)
+
+resultpath=${CurrentPath}'/BPL1CompilierFile'$(date +%Y%m%d_%H%M%S)
+mkdir ${resultpath}
+cd ${CurrentPath}'/code/DailyBuild/BPL1/Script'
+./Linux_BPL1_CMAC.sh
+
+
+echo -e "\e[1;36mstart update\e[1;0m ${starttime}"
+echo -e "\e[1;36mend run eFT\e[1;0m $(date)"
+
+cd ${CurrentPath}'/code/rt_lwos'
+cp ./P4080*.map ${resultpath}
+cp ./*P4080*.elf ${resultpath}
+cp ./BPLB_COMPILE_CMAC.log ${resultpath}
+if [ -f ./REL_P4080-core_CMAC_MDLSD.elf ] && [ -f ./REL_P4080-core_CMAC_MULSD.elf ]
+then
+    echo -e "\e[1;36mBPL1 compilier successful\e[1;0m"
+else
+    echo -e "\e[1;31mBPL1 compilier fail\e[1;0m"
+fi
+
+
+

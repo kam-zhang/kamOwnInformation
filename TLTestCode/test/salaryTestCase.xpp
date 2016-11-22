@@ -1,0 +1,38 @@
+#include <testngpp/testngpp.hpp>
+#include "salary.h"
+
+
+FIXTURE(salaryTest)
+{
+    TEST(when QingWen work for JiaZheng in october salary should be 4200)
+    {
+        EXPECT_EQ(4200, calcSalary(JiaZheng, QingWen, Oct));
+    }
+
+    TEST(when QingWen work for JiaBaoyu in March salary should be 11200)
+    {
+        EXPECT_EQ(11200, calcSalary(JiaBaoyu, QingWen, May));
+    }
+    TEST(when SheYue work for JiaMu in june salary should be 6000)
+    {
+        EXPECT_EQ(6000, calcSalary(JiaMu, SheYue, Jun));
+    }
+    TEST(when SheYue work for WangFuren in october salary should be 3000)
+    {
+        EXPECT_EQ(3000, calcSalary(WangFuren, SheYue, Oct));
+    }
+    TEST(when XiRen work for JiaZheng in Sep salary should be 8000)
+    {
+        EXPECT_EQ(8000, calcSalary(JiaZheng, XiRen, Sep));
+    }
+    TEST(when XiRen work for JiaBaoyu in october salary should be 28000)
+    {
+        EXPECT_EQ(28000, calcSalary(JiaBaoyu, XiRen, Oct));
+    }
+    TEST(when input error salary should be INVALID_SALARY)
+    {
+        EXPECT_EQ(INVALID_SALARY, calcSalary(JiaZheng, QingWen, (monthType)20));
+    }
+};
+
+

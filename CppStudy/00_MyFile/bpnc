@@ -1,0 +1,27 @@
+#!/bin/bash
+set +x
+CurrentPath=$(pwd)
+starttime=$(date)
+
+resultpath=${CurrentPath}'/BPLNCompilierFile'$(date +%Y%m%d_%H%M%S)
+mkdir ${resultpath}
+cd ${CurrentPath}'/code/DailyBuild/BPN/Script'
+./Linux_BPN_CMAC_Gcc.sh
+
+
+echo -e "\e[1;36mstart update\e[1;0m ${starttime}"
+echo -e "\e[1;36mend run eFT\e[1;0m $(date)"
+
+cd ${CurrentPath}'/code/rt_lwos'
+cp ./MCS-core_?LCMAC.map ${resultpath}
+cp ./*MCS-core_?LCMAC.elf ${resultpath}
+cp ${CurrentPath}'/code/DailyBuild/BPN/CompileInfo/Linux_BPN_CMAC.log' ${resultpath}'/Linux_BPN_CMAC.log'
+if [ -f ./REL_MCS-core_ULCMAC.elf ] && [ -f ./REL_MCS-core_DLCMAC.elf ]
+then
+    echo -e "\e[1;36mBPN compilier successful\e[1;0m"
+else
+    echo -e "\e[1;31mBPN compilier fail\e[1;0m"
+fi
+
+
+

@@ -1,0 +1,100 @@
+#!/bin/bash
+set +x
+if [[ -z $1 ]] || [[ -z $2 ]]
+then
+    echo -e "\e[1;31mpls input svn code path\e[1;0m"
+    echo first para is svn path; second para is code directory name
+    echo './co.sh https://10.89.168.168:8443/svn/LTE_V3_3_CODE/V3.3/Branch/05-CiBranch/BaseBand/dev V3.3code'
+    exit
+fi;
+svnPath=$1
+CurrentPath=$(pwd)'/'$2
+echo $svnPath
+echo $CurrentPath
+
+starttime=$(date)
+if [[ ! -d $CurrentPath ]]
+then
+    mkdir $CurrentPath
+    cd $CurrentPath
+else
+    cd $CurrentPath
+    rm -f -r ./*
+fi
+mkdir $CurrentPath'/code'
+mkdir $CurrentPath'/code/Code_LTE'
+mkdir $CurrentPath'/code/Code_LTE/pub'
+cd $CurrentPath'/code/Code_LTE/pub'
+svn co ${svnPath}'/code/Code_LTE/pub' . &
+
+mkdir $CurrentPath'/code/Code_LTE/cmac'
+cd $CurrentPath'/code/Code_LTE/cmac'
+svn co ${svnPath}'/code/Code_LTE/cmac' .  &
+
+svn export ${svnPath}'/code/Code_LTE/DivisionApp.mak' $CurrentPath'/code/Code_LTE'
+svn export ${svnPath}'/code/Code_LTE/Divisionlink.mak' $CurrentPath'/code/Code_LTE'
+svn export ${svnPath}'/code/Code_LTE/LteCfg.mak' $CurrentPath'/code/Code_LTE'
+
+mkdir $CurrentPath'/code/DailyBuild'
+cd $CurrentPath'/code/DailyBuild'
+svn co ${svnPath}'/code/DailyBuild' .  &
+
+mkdir $CurrentPath'/code/Project'
+cd $CurrentPath'/code/Project'
+svn co ${svnPath}'/code/Project' .  &
+
+mkdir $CurrentPath'/TestCase'
+mkdir $CurrentPath'/TestCase/FT'
+mkdir $CurrentPath'/TestCase/FT/MAC'
+cd $CurrentPath'/TestCase/FT/MAC'
+svn co ${svnPath}'/TestCase/FT/MAC' .  &
+
+mkdir $CurrentPath'/code/Code_LWOSPlatform'
+cd $CurrentPath'/code/Code_LWOSPlatform'
+svn co ${svnPath}'/code/Code_LWOSPlatform' . &
+
+mkdir $CurrentPath'/code/Code_CPUPlatform'
+mkdir $CurrentPath'/code/Code_CPUPlatform/codeUniBTS'
+mkdir $CurrentPath'/code/Code_CPUPlatform/codeUniBTS/header'
+mkdir $CurrentPath'/code/Code_CPUPlatform/codeUniBTS/header/BSP'
+mkdir $CurrentPath'/code/Code_CPUPlatform/codeUniBTS/header/BSP_Original'
+mkdir $CurrentPath'/code/Code_CPUPlatform/codeUniBTS/header/PlatAPI'
+mkdir $CurrentPath'/code/Code_CPUPlatform/PlatAPI'
+
+cd $CurrentPath'/code/Code_LTE/pub'
+echo { > ./\.arcconfig
+echo "    "\"project_id\" : \"LteCmac\", >> ./\.arcconfig
+echo "    "\"conduit_uri\" : \"http://pha.zte.com.cn/\" >> ./\.arcconfig
+echo } >> ./\.arcconfig
+
+cd $CurrentPath'/code/Code_LTE/cmac'
+echo { > ./\.arcconfig
+echo "    "\"project_id\" : \"LteCmac\", >> ./\.arcconfig
+echo "    "\"conduit_uri\" : \"http://pha.zte.com.cn/\" >> ./\.arcconfig
+echo } >> ./\.arcconfig
+
+cd $CurrentPath'/TestCase/FT/MAC'
+echo { > ./\.arcconfig
+echo "    "\"project_id\" : \"LteCmac\", >> ./\.arcconfig
+echo "    "\"conduit_uri\" : \"http://pha.zte.com.cn/\" >> ./\.arcconfig
+echo } >> ./\.arcconfig
+
+
+abc=$(ps -x | awk '{ printf $1"\t"$5"\n";}' | grep "svn" | awk '{printf $1" "; }' | awk '{ printf $1; }')
+echo $abc
+while [[ ! -z $abc ]]
+do
+    abc=$(ps -x | awk '{ printf $1"\t"$5"\n";}' | grep "svn" | awk '{printf $1" "; }' | awk '{ printf $1; }')
+    echo $abc
+    sleep 0.5
+done
+
+cd $CurrentPath
+chmod -R 777 .
+
+echo -e "\e[1;32mstart check out ${svnPath} \e[1;0m ${starttime}"
+echo -e "\e[1;32mend update\e[1;0m $(date)"
+
+
+
+

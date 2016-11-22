@@ -1,0 +1,58 @@
+#!/bin/bash
+set +x
+if [[ -z $1 ]]
+then
+    echo -e "\e[1;31mpls input svn up code path\e[1;0m"
+    echo 'example :/home/developer/Code/dev'
+    exit
+fi;
+Para=''
+if [[ ! -z $2 ]]
+then
+    Para="-r $2"
+fi;
+
+CurrentPath=$1
+echo -e "\e[1;31mstart update\e[1;0m $(date)"
+
+cd ${CurrentPath}'/code/Code_LTE/cmac/'
+echo $(pwd)
+svn up ${Para}  &
+
+cd ${CurrentPath}'/code/Code_LTE/pub/'
+echo $(pwd)
+svn up ${Para}  &
+
+cd ${CurrentPath}'/TestCase/FT/MAC'
+echo $(pwd)
+svn up ${Para}  &
+
+cd ${CurrentPath}'/code/DailyBuild/'
+echo $(pwd)
+svn up ${Para}  &
+
+cd ${CurrentPath}'/code/Code_LWOSPlatform/'
+echo $(pwd)
+svn up ${Para} 
+
+cd ${CurrentPath}'/code/Project/'
+echo $(pwd)
+svn up ${Para}  &
+
+abc=$(ps -x | awk '{ printf $1"\t"$5"\n";}' | grep "svn" | awk '{printf $1" "; }' | awk '{ printf $1; }')
+echo $abc
+while [[ ! -z $abc ]]
+do
+    abc=$(ps -x | awk '{ printf $1"\t"$5"\n";}' | grep "svn" | awk '{printf $1" "; }' | awk '{ printf $1; }')
+    echo $abc
+    sleep 0.5
+done
+
+echo -e "\e[1;32mend update\e[1;0m $(date)"
+cd ${CurrentPath}/TestCase/FT/MAC
+echo ******************$(pwd)*****************************
+./run_eFT.sh -s:c
+echo -e "\e[1;36mend run eFT\e[1;0m $(date)"
+
+
+
