@@ -23,7 +23,7 @@ unsigned char GR(int i,int j)
 }
 unsigned char BL(int i,int j)
 {
-    return 0;//_sq(0.2*(i-512))+_sq(0.2*(j-512));
+    return RD(j,i);//_sq(0.2*(i-512))+_sq(0.2*(j-512));
 }
 void pixel_write(int,int);
 FILE*fp;
